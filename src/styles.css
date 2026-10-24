@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #172b3a;
+  --color-muted: #778995;
+  --color-canvas: #f4f7f8;
+  --color-line: #e3eaed;
+  --color-brand: #147f7b;
+  --color-brand-dark: #0d6562;
+  --color-brand-soft: #e5f4f1;
+  --color-amber: #d9a33b;
+  --shadow-card: 0 6px 24px rgba(24, 53, 67, 0.055);
+}
+
+:root {
+  font-family: "Inter", "Segoe UI", Arial, sans-serif;
+  color: #172b3a;
+  background: #f4f7f8;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid rgba(20, 127, 123, 0.35);
+  outline-offset: 2px;
+}
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #d3dfe2 transparent;
+}
+.field-label {
+  @apply mb-1.5 block text-xs font-semibold tracking-wide text-slate-600;
+}
+.field-control {
+  @apply w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-ink placeholder:text-slate-400 transition focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/10;
+}
+.btn-primary {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-50;
+}
+.btn-secondary {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50;
+}
+.card {
+  @apply rounded-2xl border border-slate-100 bg-white shadow-card;
+}
+.table-cell {
+  @apply whitespace-nowrap px-4 py-3.5 text-sm text-slate-600;
+}
