@@ -138,7 +138,7 @@ function Login({ onLogin }: { onLogin: (user: AuthUser) => void }) {
         <Brand inverse />
         <div className="relative max-w-lg">
           <span className="mb-5 inline-flex rounded-full border border-white/20 px-3 py-1 text-xs uppercase tracking-[.2em] text-teal-100">
-            CocaCars operations
+            AutoSureX operations
           </span>
           <h1 className="text-5xl font-semibold leading-tight tracking-tight">
             Every detail.
@@ -220,7 +220,7 @@ function Login({ onLogin }: { onLogin: (user: AuthUser) => void }) {
             </button>
           </form>
           <p className="mt-8 text-xs leading-5 text-slate-400">
-            Access is monitored and limited to authorized CocaCars personnel.
+            Access is monitored and limited to authorized AutoSureX personnel.
           </p>
         </div>
       </section>
@@ -231,32 +231,21 @@ function Login({ onLogin }: { onLogin: (user: AuthUser) => void }) {
 function Brand({ inverse = false }: { inverse?: boolean }) {
   return (
     <div className="relative flex items-center gap-3">
-      <span
-        className={`flex h-10 w-10 items-center justify-center rounded-xl ${inverse ? "bg-white text-brand" : "bg-brand text-white"}`}
-        aria-hidden="true"
-      >
-        <svg
-          width="23"
-          height="23"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M3 14h18l-1.7-5.5a2 2 0 0 0-1.9-1.4H6.6a2 2 0 0 0-1.9 1.4zM5 14v3h14v-3M7 17v2m10-2v2M5 14l-2 1m16-1 2 1M7 11h.01M17 11h.01" />
-        </svg>
-      </span>
-      <span
-        className={`text-lg font-bold tracking-tight ${inverse ? "text-white" : "text-ink"}`}
-      >
-        coca
-        <span className={inverse ? "text-teal-200" : "text-brand"}>cars</span>
+      <img
+        src="/autosurex-logo.jpg"
+        alt="AutoSureX logo"
+        className="h-12 w-12 shrink-0 rounded-full border border-slate-200 object-cover"
+      />
+      <span className="min-w-0">
         <span
-          className={`ml-2 text-xs font-medium ${inverse ? "text-white/55" : "text-slate-400"}`}
+          className={`block text-lg font-bold tracking-tight ${inverse ? "text-white" : "text-ink"}`}
         >
-          ADMIN
+          AutoSureX
+        </span>
+        <span
+          className={`block text-[9px] font-semibold uppercase tracking-[.14em] ${inverse ? "text-white/65" : "text-slate-500"}`}
+        >
+          Pre-Delivery Inspection
         </span>
       </span>
     </div>
@@ -617,7 +606,7 @@ function App() {
           )}
         </main>
         <footer className="px-7 pb-6 text-center text-xs text-slate-400">
-          CocaCars Operations · Internal workspace
+          AutoSureX · Pre-Delivery Inspection
         </footer>
       </div>
       {profileOpen && (
@@ -778,7 +767,7 @@ function Dashboard({
       <PageHeading
         eyebrow="Good to see you, "
         title={`Welcome, ${user.name.split(" ")[0]}`}
-        description="Here’s the latest activity across your CocaCars operations."
+        description="Here’s the latest activity across your AutoSureX operations."
         action={
           <div className="flex flex-wrap items-center gap-2">
             {user.role === "admin" &&

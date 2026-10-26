@@ -91,6 +91,8 @@ describe("admin application interactions", () => {
     expect(
       await screen.findByRole("heading", { name: "Welcome, Demo" }),
     ).toBeInTheDocument();
+    expect(screen.getByAltText("AutoSureX logo")).toBeInTheDocument();
+    expect(screen.getByText("AutoSureX", { selector: "span" })).toBeInTheDocument();
     expect(screen.getByText("Active inventory")).toBeInTheDocument();
     expect(screen.getByText("9", { selector: "p" })).toBeInTheDocument();
   });
