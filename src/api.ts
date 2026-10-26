@@ -57,12 +57,15 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 export const api = {
   login: async (email: string, password: string, rememberMe = false) => {
-    const session = await request<{ user: AuthUser; csrfToken: string }>(
+    await request<{ user: AuthUser; csrfToken: string }>(
       "/auth/login",
       {
         method: "POST",
         body: JSON.stringify({ email, password, rememberMe }),
       },
+    );
+    const session = await request<{ user: AuthUser; csrfToken: string }>(
+      "/auth/me",
     );
     activeCsrfToken = session.csrfToken;
     return session;
