@@ -239,4 +239,113 @@ describe("admin application interactions", () => {
     );
     expect(email).toHaveValue("admin@example.test");
   });
+
+  it("opens the QC inspection workflow and saves findings for review", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.login).mockResolvedValue({
+      user: {
+        id: 1,
+        name: "Demo Administrator",
+        email: "admin@example.test",
+        role: "admin",
+      },
+      csrfToken: "synthetic-token",
+      sessionToken: "a".repeat(64),
+    });
+    vi.mocked(api.list).mockImplementation(async (resource) => ({
+      data: [
+        resource === "inspections"
+          ? {
+              id: 8,
+              ref_id: "DEMO-IN-101",
+              registration_no: "DEMO-01-AB-0101",
+              customer_name: "Aarav Sharma",
+              mobile: "+91 90000 00101",
+              status: "pending",
+              scheduled_at: "2026-10-26T10:00:00",
+            }
+          : {
+              id: 12,
+              ref_id: "DEMO-QC-101",
+              registration_no: "DEMO-01-AB-0101",
+              customer_name: "Aarav Sharma",
+              mobile: "+91 90000 00101",
+              status: "pending",
+              findings: "Initial inspection notes",
+            },
+      ],
+      page: 1,
+      pageSize: 100,
+      total: 1,
+    }));
+    vi.mocked(api.update).mockResolvedValue(undefined);
+    vi.mocked(api.requestStatus).mockResolvedValue({ id: 3, status: "pending" });
+    render(<App />);
+
+    await user.type(
+      await screen.findByLabelText("Email address"),
+      "admin@example.test",
+    );
+    await user.type(
+      screen.getByLabelText("Password"),
+      "synthetic-test-password",
+    );
+    await user.click(screen.getByRole("button", { name: /sign in/i }));
+    await screen.findByRole("heading", { name: "Welcome, Demo" });
+
+    const navigation = within(
+      screen.getByRole("navigation", { name: "Main navigation" }),
+    );
+    await user.click(navigation.getByRole("button", { name: "Inspections" }));
+    expect(
+      await screen.findByRole("heading", { name: /Inspection Leads/ }),
+    ).toBeInTheDocument();
+    expect(await screen.findByText("Start inspection")).toBeInTheDocument();
+    await user.click(navigation.getByRole("button", { name: "Quality checks" }));
+    await screen.findByRole("heading", {
+      name: /Quality Checks/,
+      level: 1,
+    });
+    await user.click(await screen.findByRole("button", { name: "QC Inspect" }));
+
+    expect(
+      await screen.findByRole("heading", { name: "Vehicle Inspection" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Vehicle Images")).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Proceed to Vehicle Details →" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Proceed to Inspection Details →" }),
+    );
+    await user.type(
+      screen.getByLabelText("Inspection findings and notes"),
+      "No damage found",
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Proceed to Recommendation →" }),
+    );
+    await user.selectOptions(
+      screen.getByLabelText("Recommendation"),
+      "Approved for listing",
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Complete Inspection" }),
+    );
+
+    await waitFor(() => {
+      expect(api.update).toHaveBeenCalledWith("quality-checks", 12, {
+        findings: "Initial inspection notesNo damage found",
+      });
+      expect(api.requestStatus).toHaveBeenCalledWith(
+        "quality-checks",
+        12,
+        "completed",
+        "Approved for listing",
+      );
+    });
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Inspection details saved and completion submitted for approval.",
+    );
+  });
 });

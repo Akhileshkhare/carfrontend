@@ -10,13 +10,18 @@ import type { AuthUser, ResourceName } from "../shared/contracts";
 import { api, type DashboardMetrics, type StatusRequest } from "./api";
 import { ApiRequestError } from "./api-errors";
 import {
+  InspectionWorkflow,
+  InspectionWorkspace,
+  type WorkflowSelection,
+} from "./InspectionWorkspace";
+import {
   navigation,
   resources,
   type FieldDefinition,
   type ResourceDefinition,
 } from "./catalog";
 
-type ViewKey = "dashboard" | "approvals" | ResourceName;
+type ViewKey = "dashboard" | "approvals" | "inspection-workflow" | ResourceName;
 interface RecordPage {
   data: Record<string, unknown>[];
   page: number;
@@ -264,6 +269,8 @@ function App() {
   const [sessionError, setSessionError] = useState("");
   const [actionError, setActionError] = useState("");
   const [view, setView] = useState<ViewKey>("dashboard");
+  const [workflowSelection, setWorkflowSelection] =
+    useState<WorkflowSelection | null>(null);
   const [mobileNav, setMobileNav] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
 
@@ -291,6 +298,7 @@ function App() {
       await api.logout();
       setUser(null);
       setView("dashboard");
+      setWorkflowSelection(null);
     } catch (failure) {
       setActionError(
         failure instanceof Error
@@ -373,6 +381,16 @@ function App() {
       );
     return true;
   });
+  const activeNavigation =
+    view === "inspection-workflow" ? workflowSelection?.resource : view;
+  const currentTitle =
+    view === "dashboard"
+      ? "Overview"
+      : view === "approvals"
+        ? "Status approvals"
+        : view === "inspection-workflow"
+          ? "Vehicle Inspection"
+          : resources[view].name;
 
   return (
     <div className="min-h-screen bg-canvas">
@@ -411,8 +429,8 @@ function App() {
                           setView(item.key);
                           setMobileNav(false);
                         }}
-                        className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition ${view === item.key ? "bg-brand-soft text-brand" : "text-slate-600 hover:bg-slate-50 hover:text-ink"}`}
-                        aria-current={view === item.key ? "page" : undefined}
+                        className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition ${activeNavigation === item.key ? "bg-brand-soft text-brand" : "text-slate-600 hover:bg-slate-50 hover:text-ink"}`}
+                        aria-current={activeNavigation === item.key ? "page" : undefined}
                       >
                         <Icon name={item.key} size={17} />
                         <span>{item.label}</span>
@@ -471,19 +489,11 @@ function App() {
             <p className="hidden text-sm text-muted sm:block">
               Operations <span className="mx-2 text-slate-300">/</span>{" "}
               <span className="font-medium text-ink">
-                {view === "dashboard"
-                  ? "Overview"
-                  : view === "approvals"
-                    ? "Status approvals"
-                    : resources[view].name}
+                {currentTitle}
               </span>
             </p>
             <p className="text-sm font-semibold text-ink sm:hidden">
-              {view === "dashboard"
-                ? "Overview"
-                : view === "approvals"
-                  ? "Approvals"
-                  : resources[view].name}
+              {currentTitle}
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -521,10 +531,29 @@ function App() {
               </button>
             </div>
           )}
-          {view === "dashboard" ? (
+          {view === "inspection-workflow" ? (
+            workflowSelection ? (
+              <InspectionWorkflow
+                selection={workflowSelection}
+                onBack={() => setView(workflowSelection.resource)}
+              />
+            ) : (
+              <Dashboard user={user} onNavigate={setView} />
+            )
+          ) : view === "dashboard" ? (
             <Dashboard user={user} onNavigate={setView} />
           ) : view === "approvals" ? (
             <Approvals />
+          ) : view === "inspections" || view === "quality-checks" ? (
+            <InspectionWorkspace
+              key={view}
+              resource={view}
+              user={user}
+              onInspect={(selection) => {
+                setWorkflowSelection(selection);
+                setView("inspection-workflow");
+              }}
+            />
           ) : (
             <ResourcePage key={view} resource={view} user={user} />
           )}
