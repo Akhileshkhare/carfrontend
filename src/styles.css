@@ -1,21 +1,23 @@
 @import "tailwindcss";
 
 @theme {
-  --color-ink: #172b3a;
-  --color-muted: #778995;
-  --color-canvas: #f4f7f8;
-  --color-line: #e3eaed;
-  --color-brand: #147f7b;
-  --color-brand-dark: #0d6562;
-  --color-brand-soft: #e5f4f1;
+  --color-ink: #10233f;
+  --color-muted: #718096;
+  --color-canvas: #f4f9fd;
+  --color-line: #dce8f2;
+  --color-brand: #0879d9;
+  --color-brand-dark: #07569e;
+  --color-brand-soft: #e8f6fd;
+  --color-brand-navy: #10233f;
+  --color-brand-cyan: #16b8e8;
   --color-amber: #d9a33b;
-  --shadow-card: 0 6px 24px rgba(24, 53, 67, 0.055);
+  --shadow-card: 0 6px 24px rgba(16, 35, 63, 0.07);
 }
 
 :root {
   font-family: "Inter", "Segoe UI", Arial, sans-serif;
-  color: #172b3a;
-  background: #f4f7f8;
+  color: #10233f;
+  background: #f4f9fd;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }
@@ -39,12 +41,12 @@ a:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 3px solid rgba(20, 127, 123, 0.35);
+  outline: 3px solid rgba(8, 121, 217, 0.35);
   outline-offset: 2px;
 }
 .scrollbar-thin {
   scrollbar-width: thin;
-  scrollbar-color: #d3dfe2 transparent;
+  scrollbar-color: #c8dcec transparent;
 }
 .field-label {
   @apply mb-1.5 block text-xs font-semibold tracking-wide text-slate-600;

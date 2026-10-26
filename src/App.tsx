@@ -132,12 +132,12 @@ function Login({ onLogin }: { onLogin: (user: AuthUser) => void }) {
   }
   return (
     <main className="flex min-h-screen bg-white">
-      <section className="relative hidden w-1/2 flex-col justify-between overflow-hidden bg-[#123f47] p-12 text-white lg:flex">
+      <section className="relative hidden w-1/2 flex-col justify-between overflow-hidden bg-brand-navy p-12 text-white lg:flex">
         <div className="absolute -right-32 -top-32 h-[30rem] w-[30rem] rounded-full border border-white/10" />
         <div className="absolute -right-10 -top-10 h-[25rem] w-[25rem] rounded-full border border-white/10" />
         <Brand inverse />
         <div className="relative max-w-lg">
-          <span className="mb-5 inline-flex rounded-full border border-white/20 px-3 py-1 text-xs uppercase tracking-[.2em] text-teal-100">
+          <span className="mb-5 inline-flex rounded-full border border-white/20 px-3 py-1 text-xs uppercase tracking-[.2em] text-brand-cyan">
             AutoSureX operations
           </span>
           <h1 className="text-5xl font-semibold leading-tight tracking-tight">
@@ -145,12 +145,12 @@ function Login({ onLogin }: { onLogin: (user: AuthUser) => void }) {
             <br />
             In the right hands.
           </h1>
-          <p className="mt-5 max-w-md text-base leading-7 text-teal-50/75">
+          <p className="mt-5 max-w-md text-base leading-7 text-sky-100/85">
             One workspace to keep vehicle inventory, inspections, and service
             moving smoothly.
           </p>
         </div>
-        <p className="text-xs text-teal-100/60">
+        <p className="text-xs text-sky-100/70">
           Secure access for authorized team members
         </p>
       </section>
@@ -681,7 +681,7 @@ function Dashboard({
               value: metrics.availableListings,
               detail: `${metrics.listings} listings total`,
               icon: "listings",
-              color: "teal",
+              color: "brand",
               target: "listings" as ViewKey,
             },
             {
@@ -689,7 +689,7 @@ function Dashboard({
               value: metrics.soldListings,
               detail: "Listings marked sold",
               icon: "dealers",
-              color: "amber",
+              color: "navy",
               target: "listings" as ViewKey,
             },
             {
@@ -697,7 +697,7 @@ function Dashboard({
               value: metrics.dealers,
               detail: "Registered dealer records",
               icon: "dealers",
-              color: "blue",
+              color: "cyan",
               target: "dealers" as ViewKey,
             },
             {
@@ -705,7 +705,7 @@ function Dashboard({
               value: metrics.buyers,
               detail: "Buyer directory",
               icon: "buyers",
-              color: "violet",
+              color: "brand",
               target: "buyers" as ViewKey,
             },
             {
@@ -713,7 +713,7 @@ function Dashboard({
               value: metrics.sellers,
               detail: "Seller directory",
               icon: "sellers",
-              color: "rose",
+              color: "navy",
               target: "sellers" as ViewKey,
             },
             {
@@ -721,7 +721,7 @@ function Dashboard({
               value: metrics.quickListings,
               detail: "Customer intake records",
               icon: "quick-listings",
-              color: "teal",
+              color: "cyan",
               target: "quick-listings" as ViewKey,
             },
             {
@@ -729,7 +729,7 @@ function Dashboard({
               value: metrics.pendingInspections,
               detail: "Awaiting inspection",
               icon: "inspections",
-              color: "amber",
+              color: "brand",
               target: "inspections" as ViewKey,
             },
             {
@@ -737,7 +737,7 @@ function Dashboard({
               value: metrics.pendingQualityChecks,
               detail: "Awaiting quality review",
               icon: "quality-checks",
-              color: "blue",
+              color: "navy",
               target: "quality-checks" as ViewKey,
             },
           ]
@@ -851,7 +851,7 @@ function Dashboard({
                       {card.label}
                     </span>
                     <span
-                      className={`grid h-9 w-9 place-items-center rounded-lg ${card.color === "teal" ? "bg-brand-soft text-brand" : card.color === "amber" ? "bg-amber-50 text-amber-700" : card.color === "blue" ? "bg-sky-50 text-sky-700" : card.color === "violet" ? "bg-violet-50 text-violet-700" : "bg-rose-50 text-rose-700"}`}
+                      className={`grid h-9 w-9 place-items-center rounded-lg ${card.color === "brand" ? "bg-brand-soft text-brand" : card.color === "cyan" ? "bg-cyan-50 text-cyan-700" : "bg-slate-100 text-brand-navy"}`}
                     >
                       <Icon name={card.icon} size={17} />
                     </span>
@@ -892,7 +892,7 @@ function Dashboard({
                 </div>
               </div>
               <div className="flex flex-1 items-center gap-3 rounded-xl bg-slate-50 p-4">
-                <span className="grid h-10 w-10 place-items-center rounded-lg bg-sky-50 text-sky-700">
+                <span className="grid h-10 w-10 place-items-center rounded-lg bg-brand-soft text-brand">
                   <Icon name="quality-checks" />
                 </span>
                 <div>

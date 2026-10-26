@@ -383,7 +383,7 @@ function InspectionCards({
             key={String(record.id)}
             className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
           >
-            <div className="flex items-center justify-between gap-2 bg-[#344675] px-4 py-3 text-white">
+            <div className="flex items-center justify-between gap-2 bg-brand-navy px-4 py-3 text-white">
               <p className="truncate text-xs font-bold">
                 {recordText(record, "ref_id", recordText(record, "registration_no"))}
               </p>
@@ -418,7 +418,7 @@ function InspectionCards({
                 label="Appointment"
                 value={dateText(record.scheduled_at ?? record.appointment_at)}
               />
-              <div className="rounded-lg border-l-2 border-brand bg-indigo-50/80 p-3">
+              <div className="rounded-lg border-l-2 border-brand bg-brand-soft p-3">
                 <p className="text-[10px] font-bold uppercase tracking-wide text-brand">
                   Location
                 </p>
@@ -447,7 +447,7 @@ function InspectionCards({
                 )}
                 <button
                   className={`rounded-lg px-3 py-2 text-xs font-semibold text-white ${
-                    status === "pending" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-brand hover:bg-brand-dark"
+                    status === "pending" ? "bg-brand hover:bg-brand-dark" : "bg-brand-navy hover:bg-slate-800"
                   }`}
                   onClick={() => onInspect(record)}
                 >
@@ -540,7 +540,7 @@ function QualityTable({
                 </td>
                 <td className="px-3 py-3">
                   <button
-                    className="rounded-md bg-emerald-500 px-3 py-2 text-[10px] font-bold text-white hover:bg-emerald-600"
+                    className="rounded-md bg-brand px-3 py-2 text-[10px] font-bold text-white hover:bg-brand-dark"
                     onClick={() => onInspect(record)}
                   >
                     QC Inspect
@@ -630,7 +630,7 @@ export function InspectionWorkflow({
           <p className="mt-1 text-xs leading-5 text-muted">
             Select photos from your device. Images are previewed here and are not uploaded by this workspace.
           </p>
-          <label className="mt-4 flex cursor-pointer items-center justify-center rounded-lg bg-rose-500 px-4 py-3 text-xs font-semibold text-white hover:bg-rose-600">
+          <label className="mt-4 flex cursor-pointer items-center justify-center rounded-lg bg-brand px-4 py-3 text-xs font-semibold text-white hover:bg-brand-dark">
             ▣ Start Image Capture / Select from Gallery
             <input
               className="sr-only"
@@ -758,7 +758,7 @@ export function InspectionWorkflow({
               <span
                 className={`mx-auto grid h-8 w-8 place-items-center rounded-full text-xs font-bold ${
                   step === index
-                    ? "bg-[#344675] text-white ring-4 ring-indigo-100"
+                    ? "bg-brand-navy text-white ring-4 ring-brand-soft"
                     : step > index
                       ? "bg-brand text-white"
                       : "bg-slate-100 text-slate-500"
@@ -774,7 +774,7 @@ export function InspectionWorkflow({
         </div>
         <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-200">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-[#344675] to-sky-500 transition-all"
+            className="h-full rounded-full bg-gradient-to-r from-brand-navy to-brand-cyan transition-all"
             style={{ width: `${((step + 1) / steps.length) * 100}%` }}
           />
         </div>
@@ -789,7 +789,7 @@ export function InspectionWorkflow({
             className="overflow-hidden rounded-lg border border-slate-200"
           >
             <button
-              className="flex w-full items-center justify-between bg-[#344675] px-4 py-3 text-left text-sm font-semibold text-white"
+              className="flex w-full items-center justify-between bg-brand-navy px-4 py-3 text-left text-sm font-semibold text-white"
               aria-expanded={expanded === index}
               onClick={() => {
                 setExpanded(expanded === index ? -1 : index);
