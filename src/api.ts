@@ -93,15 +93,16 @@ export const api = {
         body: JSON.stringify({ email, password, rememberMe }),
       },
     );
+    if (!/^[a-f0-9]{64}$/i.test(loginSession.sessionToken)) {
+      throw new ApiRequestError(
+        "The server signed you in but did not return a valid session. Please contact support.",
+        502,
+        "INVALID_SESSION_RESPONSE",
+      );
+    }
     setSessionToken(loginSession.sessionToken);
-    const session = await request<{
-      user: AuthUser;
-      csrfToken: string;
-      sessionToken: string;
-    }>("/auth/me");
-    activeCsrfToken = session.csrfToken;
-    setSessionToken(session.sessionToken);
-    return session;
+    activeCsrfToken = loginSession.csrfToken;
+    return loginSession;
   },
   me: async () => {
     const session = await request<{
