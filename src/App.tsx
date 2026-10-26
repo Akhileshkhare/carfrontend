@@ -273,6 +273,8 @@ function App() {
     useState<WorkflowSelection | null>(null);
   const [mobileNav, setMobileNav] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     api
@@ -291,6 +293,27 @@ function App() {
       })
       .finally(() => setInitializing(false));
   }, []);
+
+  useEffect(() => {
+    if (!profileMenuOpen) return;
+    function closeMenu(event: MouseEvent) {
+      if (
+        event.target instanceof Node &&
+        !profileMenuRef.current?.contains(event.target)
+      ) {
+        setProfileMenuOpen(false);
+      }
+    }
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setProfileMenuOpen(false);
+    }
+    document.addEventListener("mousedown", closeMenu);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("mousedown", closeMenu);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [profileMenuOpen]);
 
   const signOut = async () => {
     setActionError("");
@@ -501,19 +524,54 @@ function App() {
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />{" "}
               Secure session
             </span>
-            <button
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-brand text-xs font-bold text-white"
-              aria-label="Account settings"
-              title="Account settings"
-              onClick={() => setProfileOpen(true)}
-            >
-              {user.name
-                .split(/\s+/)
-                .map((word) => word[0])
-                .slice(0, 2)
-                .join("")
-                .toUpperCase()}
-            </button>
+            <div className="relative" ref={profileMenuRef}>
+              <button
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-brand text-xs font-bold text-white ring-offset-2 transition hover:ring-2 hover:ring-brand/30"
+                aria-label="User profile menu"
+                aria-haspopup="menu"
+                aria-expanded={profileMenuOpen}
+                title="User profile"
+                onClick={() => setProfileMenuOpen((open) => !open)}
+              >
+                {user.name
+                  .split(/\s+/)
+                  .map((word) => word[0])
+                  .slice(0, 2)
+                  .join("")
+                  .toUpperCase()}
+              </button>
+              {profileMenuOpen && (
+                <div
+                  role="menu"
+                  aria-label="User profile options"
+                  className="absolute right-0 top-full z-50 mt-2 w-48 overflow-hidden rounded-lg border border-slate-100 bg-white py-2 shadow-xl"
+                >
+                  <p className="px-4 pb-2 text-xs text-muted">
+                    Welcome {user.name.split(/\s+/)[0]}!
+                  </p>
+                  <button
+                    role="menuitem"
+                    className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                    onClick={() => {
+                      setProfileMenuOpen(false);
+                      setProfileOpen(true);
+                    }}
+                  >
+                    <span aria-hidden="true">✎</span> Edit Profile
+                  </button>
+                  <button
+                    role="menuitem"
+                    className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                    onClick={() => {
+                      setProfileMenuOpen(false);
+                      void signOut();
+                    }}
+                  >
+                    <span aria-hidden="true">↪</span> Logout
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </header>
         <main className="mx-auto max-w-[1500px] px-4 py-7 sm:px-7 lg:px-9">
@@ -1955,7 +2013,7 @@ function ProfileDialog({
     }
   }
   return (
-    <Modal title="Account settings" onClose={onClose}>
+    <Modal title="Edit Profile" onClose={onClose}>
       <form onSubmit={submit} className="p-5">
         <div className="space-y-4">
           <div>

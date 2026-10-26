@@ -10,6 +10,7 @@ vi.mock("../../src/api", () => ({
     me: vi.fn(),
     login: vi.fn(),
     logout: vi.fn(),
+    updateProfile: vi.fn(),
     dashboard: vi.fn(),
     seedDemoData: vi.fn(),
     staff: vi.fn(),
@@ -347,5 +348,101 @@ describe("admin application interactions", () => {
     expect(await screen.findByRole("status")).toHaveTextContent(
       "Inspection details saved and completion submitted for approval.",
     );
+  });
+
+  it("opens Edit Profile from the top-right user menu and saves changes", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.login).mockResolvedValue({
+      user: {
+        id: 1,
+        name: "Demo Administrator",
+        email: "admin@example.test",
+        role: "admin",
+      },
+      csrfToken: "synthetic-token",
+      sessionToken: "a".repeat(64),
+    });
+    vi.mocked(api.updateProfile).mockResolvedValue({
+      user: {
+        id: 1,
+        name: "Updated Administrator",
+        email: "admin@example.test",
+        role: "admin",
+      },
+    });
+    render(<App />);
+
+    await user.type(
+      await screen.findByLabelText("Email address"),
+      "admin@example.test",
+    );
+    await user.type(
+      screen.getByLabelText("Password"),
+      "synthetic-test-password",
+    );
+    await user.click(screen.getByRole("button", { name: /sign in/i }));
+    await screen.findByRole("heading", { name: "Welcome, Demo" });
+    await user.click(screen.getByRole("button", { name: "User profile menu" }));
+
+    const menu = screen.getByRole("menu", { name: "User profile options" });
+    await user.click(within(menu).getByRole("menuitem", { name: "Edit Profile" }));
+    const dialog = screen.getByRole("dialog");
+    expect(
+      within(dialog).getByRole("heading", { name: "Edit Profile" }),
+    ).toBeInTheDocument();
+    const displayName = within(dialog).getByLabelText("Display name");
+    await user.clear(displayName);
+    await user.type(displayName, "Updated Administrator");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Save profile" }),
+    );
+
+    await waitFor(() =>
+      expect(api.updateProfile).toHaveBeenCalledWith({
+        name: "Updated Administrator",
+        email: "admin@example.test",
+      }),
+    );
+    expect(
+      await screen.findByText("Updated Administrator", { exact: true }),
+    ).toBeInTheDocument();
+  });
+
+  it("logs out when Logout is selected from the top-right user menu", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.login).mockResolvedValue({
+      user: {
+        id: 1,
+        name: "Demo Administrator",
+        email: "admin@example.test",
+        role: "admin",
+      },
+      csrfToken: "synthetic-token",
+      sessionToken: "a".repeat(64),
+    });
+    vi.mocked(api.logout).mockResolvedValue(undefined);
+    render(<App />);
+
+    await user.type(
+      await screen.findByLabelText("Email address"),
+      "admin@example.test",
+    );
+    await user.type(
+      screen.getByLabelText("Password"),
+      "synthetic-test-password",
+    );
+    await user.click(screen.getByRole("button", { name: /sign in/i }));
+    await screen.findByRole("heading", { name: "Welcome, Demo" });
+    await user.click(screen.getByRole("button", { name: "User profile menu" }));
+    await user.click(
+      within(screen.getByRole("menu", { name: "User profile options" })).getByRole(
+        "menuitem",
+        { name: "Logout" },
+      ),
+    );
+
+    await waitFor(() => expect(api.logout).toHaveBeenCalledOnce());
+    expect(await screen.findByRole("heading", { name: "Sign in to your account" }))
+      .toBeInTheDocument();
   });
 });
