@@ -9,7 +9,27 @@ export { ApiRequestError } from "./api-errors";
 
 const apiUrl = import.meta.env.VITE_API_URL?.replace(/\/+$/, "") ?? "";
 const base = `${apiUrl}/api`;
+const sessionTokenKey = "cc_session_token";
 let activeCsrfToken = "";
+let activeSessionToken = "";
+
+function storedSessionToken(): string {
+  if (activeSessionToken) return activeSessionToken;
+  if (typeof window === "undefined") return "";
+  activeSessionToken = window.sessionStorage.getItem(sessionTokenKey) ?? "";
+  return activeSessionToken;
+}
+
+function setSessionToken(token: string): void {
+  activeSessionToken = token;
+  window.sessionStorage.setItem(sessionTokenKey, token);
+}
+
+function clearSessionToken(): void {
+  activeSessionToken = "";
+  if (typeof window !== "undefined")
+    window.sessionStorage.removeItem(sessionTokenKey);
+}
 
 function csrfToken(): string {
   if (activeCsrfToken) return activeCsrfToken;
@@ -23,6 +43,9 @@ function csrfToken(): string {
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const method = (init.method ?? "GET").toUpperCase();
   const headers = new Headers(init.headers);
+  const token = storedSessionToken();
+  if (token && !headers.has("Authorization"))
+    headers.set("Authorization", `Bearer ${token}`);
   if (init.body && !headers.has("Content-Type"))
     headers.set("Content-Type", "application/json");
   if (["POST", "PUT", "PATCH", "DELETE"].includes(method))
@@ -33,6 +56,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
       ...init,
       method,
       headers,
+      cache: "no-store",
       credentials: "include",
     });
   } catch {
@@ -50,6 +74,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
       failure.error?.message ?? "The request failed. Please try again.",
       response.status,
       failure.error?.code ?? "REQUEST_FAILED",
+      failure.error?.requestId,
     );
   }
   return body as T;
@@ -57,24 +82,35 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 export const api = {
   login: async (email: string, password: string, rememberMe = false) => {
-    await request<{ user: AuthUser; csrfToken: string }>(
+    const loginSession = await request<{
+      user: AuthUser;
+      csrfToken: string;
+      sessionToken: string;
+    }>(
       "/auth/login",
       {
         method: "POST",
         body: JSON.stringify({ email, password, rememberMe }),
       },
     );
-    const session = await request<{ user: AuthUser; csrfToken: string }>(
-      "/auth/me",
-    );
+    setSessionToken(loginSession.sessionToken);
+    const session = await request<{
+      user: AuthUser;
+      csrfToken: string;
+      sessionToken: string;
+    }>("/auth/me");
     activeCsrfToken = session.csrfToken;
+    setSessionToken(session.sessionToken);
     return session;
   },
   me: async () => {
-    const session = await request<{ user: AuthUser; csrfToken: string }>(
-      "/auth/me",
-    );
+    const session = await request<{
+      user: AuthUser;
+      csrfToken: string;
+      sessionToken: string;
+    }>("/auth/me");
     activeCsrfToken = session.csrfToken;
+    setSessionToken(session.sessionToken);
     return session;
   },
   updateProfile: (data: {
@@ -88,10 +124,16 @@ export const api = {
       body: JSON.stringify(data),
     }),
   logout: async () => {
-    await request<void>("/auth/logout", { method: "POST" });
-    activeCsrfToken = "";
+    try {
+      await request<void>("/auth/logout", { method: "POST" });
+    } finally {
+      activeCsrfToken = "";
+      clearSessionToken();
+    }
   },
   dashboard: () => request<DashboardMetrics>("/dashboard"),
+  seedDemoData: () =>
+    request<{ message: string }>("/demo-data/seed", { method: "POST" }),
   staff: () =>
     request<{ data: { id: number; name: string; role: string }[] }>("/staff"),
   list: (

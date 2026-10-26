@@ -115,7 +115,11 @@ function Login({ onLogin }: { onLogin: (user: AuthUser) => void }) {
       onLogin(result.user);
     } catch (failure) {
       setError(
-        failure instanceof Error ? failure.message : "Unable to sign in.",
+        failure instanceof ApiRequestError && failure.requestId
+          ? `${failure.message} (Reference: ${failure.requestId})`
+          : failure instanceof Error
+            ? failure.message
+            : "Unable to sign in.",
       );
     } finally {
       setBusy(false);
@@ -576,6 +580,8 @@ function Dashboard({
 }) {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [error, setError] = useState("");
+  const [seedBusy, setSeedBusy] = useState(false);
+  const [seedNotice, setSeedNotice] = useState("");
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     api
@@ -662,6 +668,24 @@ function Dashboard({
         : [],
     [metrics],
   );
+  async function loadDemoData() {
+    setSeedBusy(true);
+    setError("");
+    setSeedNotice("");
+    try {
+      await api.seedDemoData();
+      setMetrics(await api.dashboard());
+      setSeedNotice("Synthetic test data has been added.");
+    } catch (failure) {
+      setError(
+        failure instanceof Error
+          ? failure.message
+          : "Unable to load synthetic test data.",
+      );
+    } finally {
+      setSeedBusy(false);
+    }
+  }
   return (
     <>
       <PageHeading
@@ -669,12 +693,34 @@ function Dashboard({
         title={`Welcome, ${user.name.split(" ")[0]}`}
         description="Here’s the latest activity across your CocaCars operations."
         action={
-          <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-medium capitalize text-slate-600">
-            <span className="h-2 w-2 rounded-full bg-brand" />
-            {user.role} workspace
-          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            {user.role === "admin" &&
+              !loading &&
+              metrics &&
+              Object.values(metrics).every((value) => value === 0) && (
+                <button
+                  className="btn-primary"
+                  disabled={seedBusy}
+                  onClick={loadDemoData}
+                >
+                  {seedBusy ? "Loading demo data…" : "Load demo data"}
+                </button>
+              )}
+            <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-medium capitalize text-slate-600">
+              <span className="h-2 w-2 rounded-full bg-brand" />
+              {user.role} workspace
+            </span>
+          </div>
         }
       />
+      {seedNotice && (
+        <p
+          role="status"
+          className="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700"
+        >
+          {seedNotice}
+        </p>
+      )}
       {error && (
         <div
           role="alert"

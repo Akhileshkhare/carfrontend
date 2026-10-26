@@ -11,6 +11,7 @@ vi.mock("../../src/api", () => ({
     login: vi.fn(),
     logout: vi.fn(),
     dashboard: vi.fn(),
+    seedDemoData: vi.fn(),
     staff: vi.fn(),
     list: vi.fn(),
     create: vi.fn(),
@@ -59,6 +60,7 @@ describe("admin application interactions", () => {
         role: "admin",
       },
       csrfToken: "synthetic-token",
+      sessionToken: "a".repeat(64),
     });
     vi.mocked(api.dashboard).mockResolvedValue({
       listings: 12,
@@ -102,6 +104,7 @@ describe("admin application interactions", () => {
         role: "admin",
       },
       csrfToken: "synthetic-token",
+      sessionToken: "a".repeat(64),
     });
     vi.mocked(api.create).mockResolvedValue({ id: 4 });
     render(<App />);
@@ -151,6 +154,71 @@ describe("admin application interactions", () => {
     expect(await screen.findByRole("status")).toHaveTextContent(
       "Dealer created.",
     );
+  });
+
+  it("lets an administrator seed demo data when the workspace is empty", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.login).mockResolvedValue({
+      user: {
+        id: 1,
+        name: "Demo Administrator",
+        email: "admin@example.test",
+        role: "admin",
+      },
+      csrfToken: "synthetic-token",
+      sessionToken: "a".repeat(64),
+    });
+    vi.mocked(api.seedDemoData).mockResolvedValue({
+      message: "Synthetic demo data is ready.",
+    });
+    vi.mocked(api.dashboard)
+      .mockResolvedValueOnce({
+        listings: 0,
+        soldListings: 0,
+        availableListings: 0,
+        dealers: 0,
+        buyers: 0,
+        sellers: 0,
+        quickListings: 0,
+        repairs: 0,
+        pendingInspections: 0,
+        pendingQualityChecks: 0,
+        pendingApprovals: 0,
+      })
+      .mockResolvedValueOnce({
+        listings: 5,
+        soldListings: 1,
+        availableListings: 2,
+        dealers: 5,
+        buyers: 5,
+        sellers: 5,
+        quickListings: 5,
+        repairs: 5,
+        pendingInspections: 2,
+        pendingQualityChecks: 2,
+        pendingApprovals: 2,
+      });
+    render(<App />);
+
+    await user.type(
+      await screen.findByLabelText("Email address"),
+      "admin@example.test",
+    );
+    await user.type(
+      screen.getByLabelText("Password"),
+      "synthetic-test-password",
+    );
+    await user.click(screen.getByRole("button", { name: /sign in/i }));
+    await screen.findByRole("heading", { name: "Welcome, Demo" });
+    await user.click(
+      await screen.findByRole("button", { name: "Load demo data" }),
+    );
+
+    expect(api.seedDemoData).toHaveBeenCalledOnce();
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Synthetic test data has been added.",
+    );
+    expect(await screen.findByText("5 listings total")).toBeInTheDocument();
   });
 
   it("reports authentication failures without losing entered values", async () => {
