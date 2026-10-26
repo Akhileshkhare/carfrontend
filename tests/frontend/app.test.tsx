@@ -94,7 +94,11 @@ describe("admin application interactions", () => {
     expect(screen.getByAltText("AutoSureX logo")).toBeInTheDocument();
     expect(screen.getByText("AutoSureX", { selector: "span" })).toBeInTheDocument();
     expect(screen.getByText("Active inventory")).toBeInTheDocument();
-    expect(screen.getByText("9", { selector: "p" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: /Active inventory 9 12 listings total/,
+      }),
+    ).toBeInTheDocument();
   });
 
   it("creates a dealer through the accessible record form", async () => {

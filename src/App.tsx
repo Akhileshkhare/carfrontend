@@ -764,31 +764,67 @@ function Dashboard({
   }
   return (
     <>
-      <PageHeading
-        eyebrow="Good to see you, "
-        title={`Welcome, ${user.name.split(" ")[0]}`}
-        description="Here’s the latest activity across your AutoSureX operations."
-        action={
-          <div className="flex flex-wrap items-center gap-2">
+      <section className="relative mb-6 overflow-hidden rounded-2xl bg-gradient-to-r from-brand-navy via-brand-dark to-brand px-6 py-7 text-white shadow-lg sm:px-8 sm:py-9">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-12 -top-28 h-80 w-80 rounded-full border border-white/10"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-2 -top-16 h-60 w-60 rounded-full border border-white/10"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -bottom-28 right-40 h-56 w-56 rounded-full bg-brand-cyan/15 blur-3xl"
+        />
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="max-w-2xl">
+            <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.18em] text-sky-100">
+              <span className="h-1.5 w-1.5 rounded-full bg-brand-cyan" />
+              AutoSureX operations
+            </p>
+            <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+              Welcome, {user.name.split(" ")[0]}
+            </h1>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-sky-100/85 sm:text-base">
+              Your inspection operations at a glance. Review activity and keep
+              every vehicle moving with confidence.
+            </p>
+          </div>
+          <div className="relative flex flex-wrap items-center gap-2">
             {user.role === "admin" &&
               !loading &&
               metrics &&
               Object.values(metrics).every((value) => value === 0) && (
                 <button
-                  className="btn-primary"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-brand-navy shadow-sm transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50"
                   disabled={seedBusy}
                   onClick={loadDemoData}
                 >
                   {seedBusy ? "Loading demo data…" : "Load demo data"}
                 </button>
               )}
-            <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-medium capitalize text-slate-600">
-              <span className="h-2 w-2 rounded-full bg-brand" />
+            <span className="inline-flex items-center gap-2 rounded-lg border border-white/20 bg-white/10 px-3 py-2.5 text-xs font-semibold capitalize text-white">
+              <Icon name="dashboard" size={15} />
               {user.role} workspace
             </span>
           </div>
-        }
-      />
+        </div>
+        <div className="relative mt-7 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-white/15 pt-4 text-xs text-sky-100/80">
+          <span className="inline-flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-emerald-300" />
+            Workspace active
+          </span>
+          <span>
+            {new Intl.DateTimeFormat("en", {
+              weekday: "long",
+              month: "long",
+              day: "numeric",
+              year: "numeric",
+            }).format(new Date())}
+          </span>
+        </div>
+      </section>
       {seedNotice && (
         <p
           role="status"
@@ -827,7 +863,7 @@ function Dashboard({
           ? Array.from({ length: 8 }, (_, index) => (
               <div
                 key={index}
-                className="card h-[142px] animate-pulse bg-white p-5"
+                className="card h-[160px] animate-pulse bg-white p-5"
               >
                 <div className="h-3 w-24 rounded bg-slate-100" />
                 <div className="mt-6 h-7 w-16 rounded bg-slate-100" />
@@ -844,79 +880,155 @@ function Dashboard({
                 <button
                   key={card.label}
                   onClick={() => onNavigate(card.target)}
-                  className="card group p-5 text-left transition hover:-translate-y-0.5 hover:border-brand/20 hover:shadow-md"
+                  className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 text-left shadow-sm transition duration-200 hover:-translate-y-1 hover:border-brand/30 hover:shadow-lg focus-visible:outline-brand"
                 >
                   <div className="flex items-start justify-between">
-                    <span className="text-sm font-medium text-muted">
+                    <span className="text-sm font-semibold text-slate-600">
                       {card.label}
                     </span>
                     <span
-                      className={`grid h-9 w-9 place-items-center rounded-lg ${card.color === "brand" ? "bg-brand-soft text-brand" : card.color === "cyan" ? "bg-cyan-50 text-cyan-700" : "bg-slate-100 text-brand-navy"}`}
+                      className={`grid h-10 w-10 place-items-center rounded-xl ${card.color === "brand" ? "bg-brand-soft text-brand" : card.color === "cyan" ? "bg-cyan-50 text-cyan-700" : "bg-slate-100 text-brand-navy"}`}
                     >
                       <Icon name={card.icon} size={17} />
                     </span>
                   </div>
-                  <p className="mt-4 text-3xl font-semibold tracking-tight text-ink">
+                  <p className="mt-4 text-3xl font-bold tracking-tight text-ink">
                     {card.value.toLocaleString()}
                   </p>
-                  <p className="mt-1 text-xs text-muted">{card.detail}</p>
+                  <div className="mt-3 flex items-center justify-between gap-2">
+                    <p className="truncate text-xs text-muted">{card.detail}</p>
+                    <span
+                      aria-hidden="true"
+                      className="text-sm text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-brand"
+                    >
+                      →
+                    </span>
+                  </div>
+                  <span
+                    aria-hidden="true"
+                    className={`absolute bottom-0 left-0 h-1 w-full origin-left scale-x-0 transition-transform duration-200 group-hover:scale-x-100 ${card.color === "cyan" ? "bg-brand-cyan" : card.color === "navy" ? "bg-brand-navy" : "bg-brand"}`}
+                  />
                 </button>
               ))}
       </section>
       {user.role === "admin" && metrics && (
-        <section className="mt-6 grid gap-4 lg:grid-cols-[1.3fr_.7fr]">
-          <div className="card p-6">
-            <div className="flex items-start justify-between">
+        <section className="mt-6 grid gap-4 lg:grid-cols-2">
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6">
+            <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-semibold text-ink">
+                <p className="text-base font-semibold text-ink">
+                  Inventory overview
+                </p>
+                <p className="mt-1 text-xs text-muted">
+                  Current listing availability
+                </p>
+              </div>
+              <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-soft text-brand">
+                <Icon name="listings" />
+              </span>
+            </div>
+            <div className="mt-6 flex items-end justify-between gap-3">
+              <div>
+                <p className="text-3xl font-bold tracking-tight text-ink">
+                  {metrics.availableListings.toLocaleString()}
+                  <span className="ml-1 text-base font-medium text-muted">
+                    / {metrics.listings.toLocaleString()}
+                  </span>
+                </p>
+                <p className="mt-1 text-xs text-muted">vehicles available</p>
+              </div>
+              <button
+                className="text-xs font-semibold text-brand hover:text-brand-dark"
+                onClick={() => onNavigate("listings")}
+              >
+                View inventory →
+              </button>
+            </div>
+            <div
+              className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100"
+              role="progressbar"
+              aria-label="Available inventory"
+              aria-valuemin={0}
+              aria-valuemax={metrics.listings}
+              aria-valuenow={metrics.availableListings}
+            >
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-brand to-brand-cyan transition-all"
+                style={{
+                  width: `${metrics.listings ? Math.min(100, (metrics.availableListings / metrics.listings) * 100) : 0}%`,
+                }}
+              />
+            </div>
+            <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted">
+              <span>
+                <span className="mr-1.5 inline-block h-2 w-2 rounded-full bg-brand" />
+                {metrics.availableListings} available
+              </span>
+              <span>
+                <span className="mr-1.5 inline-block h-2 w-2 rounded-full bg-slate-300" />
+                {Math.max(0, metrics.listings - metrics.availableListings)} other
+                listings
+              </span>
+            </div>
+          </div>
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-base font-semibold text-ink">
                   Team review queue
                 </p>
                 <p className="mt-1 text-xs text-muted">
-                  Status updates submitted by operations and inspection staff.
+                  Work items needing attention
                 </p>
               </div>
-              <span className="rounded-full bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700">
-                {metrics.pendingApprovals} awaiting review
+              <span className="rounded-full bg-brand-soft px-3 py-1.5 text-xs font-bold text-brand">
+                {metrics.pendingApprovals} approvals
               </span>
             </div>
-            <div className="mt-6 flex flex-col gap-4 sm:flex-row">
-              <div className="flex flex-1 items-center gap-3 rounded-xl bg-slate-50 p-4">
-                <span className="grid h-10 w-10 place-items-center rounded-lg bg-amber-50 text-amber-700">
-                  <Icon name="inspections" />
+            <div className="mt-5 space-y-3">
+              <button
+                className="flex w-full items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/80 p-3 text-left transition hover:border-brand/20 hover:bg-brand-soft/50"
+                onClick={() => onNavigate("inspections")}
+              >
+                <span className="grid h-9 w-9 place-items-center rounded-lg bg-white text-brand shadow-sm">
+                  <Icon name="inspections" size={17} />
                 </span>
-                <div>
-                  <p className="text-xl font-semibold text-ink">
-                    {metrics.pendingInspections}
-                  </p>
-                  <p className="text-xs text-muted">Pending inspections</p>
-                </div>
-              </div>
-              <div className="flex flex-1 items-center gap-3 rounded-xl bg-slate-50 p-4">
-                <span className="grid h-10 w-10 place-items-center rounded-lg bg-brand-soft text-brand">
-                  <Icon name="quality-checks" />
+                <span className="flex-1">
+                  <span className="block text-sm font-semibold text-ink">
+                    Inspections
+                  </span>
+                  <span className="text-xs text-muted">Awaiting inspection</span>
                 </span>
-                <div>
-                  <p className="text-xl font-semibold text-ink">
-                    {metrics.pendingQualityChecks}
-                  </p>
-                  <p className="text-xs text-muted">Pending quality checks</p>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="card flex flex-col justify-between p-6">
-            <div>
-              <p className="text-sm font-semibold text-ink">Approvals</p>
-              <p className="mt-1 text-sm leading-6 text-muted">
-                Review requested inspection and quality status changes before
-                they are applied.
-              </p>
+                <span className="text-lg font-bold text-ink">
+                  {metrics.pendingInspections}
+                </span>
+                <span className="text-slate-400">→</span>
+              </button>
+              <button
+                className="flex w-full items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/80 p-3 text-left transition hover:border-brand/20 hover:bg-brand-soft/50"
+                onClick={() => onNavigate("quality-checks")}
+              >
+                <span className="grid h-9 w-9 place-items-center rounded-lg bg-white text-brand shadow-sm">
+                  <Icon name="quality-checks" size={17} />
+                </span>
+                <span className="flex-1">
+                  <span className="block text-sm font-semibold text-ink">
+                    Quality checks
+                  </span>
+                  <span className="text-xs text-muted">Awaiting quality review</span>
+                </span>
+                <span className="text-lg font-bold text-ink">
+                  {metrics.pendingQualityChecks}
+                </span>
+                <span className="text-slate-400">→</span>
+              </button>
             </div>
             <button
-              className="btn-secondary mt-5 w-full"
+              className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-brand hover:text-brand-dark"
               onClick={() => onNavigate("approvals")}
             >
-              Open review queue <span aria-hidden="true">→</span>
+              Review {metrics.pendingApprovals} pending approvals
+              <span aria-hidden="true">→</span>
             </button>
           </div>
         </section>
