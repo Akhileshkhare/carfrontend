@@ -66,3 +66,39 @@ textarea:focus-visible {
 .table-cell {
   @apply whitespace-nowrap px-4 py-3.5 text-sm text-slate-600;
 }
+
+@page {
+  margin: 12mm;
+}
+
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+
+  #inspection-report,
+  #inspection-report * {
+    visibility: visible !important;
+  }
+
+  #inspection-report {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 100% !important;
+    background: white !important;
+    color: #10233f !important;
+  }
+
+  #inspection-report article,
+  #inspection-report section {
+    overflow: visible !important;
+    box-shadow: none !important;
+  }
+
+  #inspection-report img {
+    max-height: 65mm !important;
+    width: auto !important;
+    max-width: 100% !important;
+    object-fit: contain !important;
+  }
+}

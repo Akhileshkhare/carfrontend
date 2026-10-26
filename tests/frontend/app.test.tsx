@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../../src/App";
 import { api } from "../../src/api";
 import { ApiRequestError } from "../../src/api-errors";
@@ -25,6 +25,10 @@ vi.mock("../../src/api", () => ({
 }));
 
 describe("admin application interactions", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(api.me).mockRejectedValue(
@@ -249,6 +253,10 @@ describe("admin application interactions", () => {
 
   it("opens the QC inspection workflow and saves findings for review", async () => {
     const user = userEvent.setup();
+    vi.stubGlobal("URL", {
+      createObjectURL: vi.fn().mockReturnValue("blob:vehicle-image"),
+      revokeObjectURL: vi.fn(),
+    });
     vi.mocked(api.login).mockResolvedValue({
       user: {
         id: 1,
@@ -319,6 +327,26 @@ describe("admin application interactions", () => {
       await screen.findByRole("heading", { name: "Vehicle Inspection" }),
     ).toBeInTheDocument();
     expect(screen.getByText("Vehicle Images")).toBeInTheDocument();
+    await user.upload(
+      screen.getByLabelText(/Start Image Capture \/ Select from Gallery/),
+      new File(["synthetic image"], "vehicle.png", { type: "image/png" }),
+    );
+    const imagePreviewButton = await screen.findByRole("button", {
+      name: "View vehicle image 1 in large preview",
+    });
+    expect(
+      within(imagePreviewButton).getByRole("img", {
+        name: "Vehicle image 1",
+      }),
+    ).toBeInTheDocument();
+    await user.click(imagePreviewButton);
+    expect(
+      screen.getByRole("dialog", { name: "Vehicle image 1 preview" }),
+    ).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    expect(
+      screen.queryByRole("dialog", { name: "Vehicle image 1 preview" }),
+    ).not.toBeInTheDocument();
     await user.click(
       screen.getByRole("button", { name: "Proceed to Vehicle Details →" }),
     );
@@ -354,6 +382,75 @@ describe("admin application interactions", () => {
     expect(await screen.findByRole("status")).toHaveTextContent(
       "Inspection details saved and completion submitted for approval.",
     );
+  });
+
+  it("opens all inspection sections before printing the full report", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.login).mockResolvedValue({
+      user: {
+        id: 1,
+        name: "Demo Administrator",
+        email: "admin@example.test",
+        role: "admin",
+      },
+      csrfToken: "synthetic-token",
+      sessionToken: "a".repeat(64),
+    });
+    vi.mocked(api.list).mockResolvedValue({
+      data: [
+        {
+          id: 8,
+          ref_id: "DEMO-IN-101",
+          registration_no: "DEMO-01-AB-0101",
+          customer_name: "Aarav Sharma",
+          mobile: "+91 90000 00101",
+          status: "pending",
+        },
+      ],
+      page: 1,
+      pageSize: 100,
+      total: 1,
+    });
+    const print = vi
+      .spyOn(window, "print")
+      .mockImplementation(() => {
+        expect(
+          screen.getByRole("button", { name: "Vehicle Images" }),
+        ).toHaveAttribute("aria-expanded", "true");
+        expect(
+          screen.getByRole("button", { name: "Vehicle Details" }),
+        ).toHaveAttribute("aria-expanded", "true");
+        expect(
+          screen.getByRole("button", { name: "Inspection Details" }),
+        ).toHaveAttribute("aria-expanded", "true");
+        expect(
+          screen.getByRole("button", { name: "Recommendation" }),
+        ).toHaveAttribute("aria-expanded", "true");
+      });
+    render(<App />);
+
+    await user.type(
+      await screen.findByLabelText("Email address"),
+      "admin@example.test",
+    );
+    await user.type(
+      screen.getByLabelText("Password"),
+      "synthetic-test-password",
+    );
+    await user.click(screen.getByRole("button", { name: /sign in/i }));
+    await screen.findByRole("heading", { name: "Welcome, Demo" });
+    await user.click(
+      within(
+        screen.getByRole("navigation", { name: "Main navigation" }),
+      ).getByRole("button", { name: "Inspections" }),
+    );
+    await user.click(await screen.findByRole("button", { name: "Start inspection" }));
+    await screen.findByRole("heading", { name: "Vehicle Inspection" });
+    await user.click(
+      await screen.findByRole("button", { name: /Print Report/ }),
+    );
+
+    await waitFor(() => expect(print).toHaveBeenCalledOnce());
   });
 
   it("opens Edit Profile from the top-right user menu and saves changes", async () => {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { AuthUser } from "../shared/contracts";
 import { api } from "./api";
 
@@ -571,19 +571,30 @@ export function InspectionWorkflow({
   onBack: () => void;
 }) {
   const [step, setStep] = useState(0);
-  const [expanded, setExpanded] = useState(0);
+  const [expanded, setExpanded] = useState<number | "all">(0);
   const noteField = selection.resource === "quality-checks" ? "findings" : "notes";
   const [notes, setNotes] = useState(recordText(selection.record, noteField, ""));
   const [recommendation, setRecommendation] = useState("");
   const [images, setImages] = useState<string[]>([]);
+  const imageUrls = useRef<string[]>([]);
+  const [previewImage, setPreviewImage] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
   useEffect(
-    () => () => images.forEach((image) => URL.revokeObjectURL(image)),
-    [images],
+    () => () => imageUrls.current.forEach((image) => URL.revokeObjectURL(image)),
+    [],
   );
+
+  useEffect(() => {
+    if (previewImage === null) return;
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setPreviewImage(null);
+    }
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [previewImage]);
 
   async function save(complete: boolean) {
     setError("");
@@ -615,9 +626,26 @@ export function InspectionWorkflow({
   }
 
   function chooseImages(files: FileList | null) {
-    setImages((current) => {
-      current.forEach((image) => URL.revokeObjectURL(image));
-      return files ? Array.from(files).map((file) => URL.createObjectURL(file)) : [];
+    imageUrls.current.forEach((image) => URL.revokeObjectURL(image));
+    const selected = files
+      ? Array.from(files).map((file) => URL.createObjectURL(file))
+      : [];
+    imageUrls.current = selected;
+    setImages(selected);
+    setPreviewImage(null);
+  }
+
+  function printReport() {
+    const previousExpanded = expanded;
+    setExpanded("all");
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        try {
+          window.print();
+        } finally {
+          setExpanded(previousExpanded);
+        }
+      });
     });
   }
 
@@ -642,14 +670,24 @@ export function InspectionWorkflow({
             />
           </label>
           {!!images.length && (
-            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {images.map((image, index) => (
-                <img
+                <button
                   key={image}
-                  className="h-28 w-full rounded-lg border border-slate-200 object-cover"
-                  src={image}
-                  alt={`Vehicle preview ${index + 1}`}
-                />
+                  type="button"
+                  className="group relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-2 transition hover:border-brand/50 hover:shadow-md"
+                  onClick={() => setPreviewImage(index)}
+                  aria-label={`View vehicle image ${index + 1} in large preview`}
+                >
+                  <img
+                    className="h-full w-full object-contain"
+                    src={image}
+                    alt={`Vehicle image ${index + 1}`}
+                  />
+                  <span className="absolute inset-x-2 bottom-2 rounded-md bg-brand-navy/80 px-2 py-1.5 text-center text-xs font-medium text-white opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">
+                    Click to enlarge
+                  </span>
+                </button>
               ))}
             </div>
           )}
@@ -724,6 +762,7 @@ export function InspectionWorkflow({
 
   return (
     <>
+      <div id="inspection-report">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="mb-1 text-xs font-bold uppercase tracking-[.16em] text-brand">
@@ -735,8 +774,8 @@ export function InspectionWorkflow({
             {recordText(selection.record, "customer_name")}
           </p>
         </div>
-        <div className="flex gap-2">
-          <button className="btn-secondary" onClick={() => window.print()}>
+        <div className="flex gap-2 print:hidden">
+          <button className="btn-secondary" onClick={printReport}>
             ▣ Print Report
           </button>
           <button className="btn-secondary" onClick={onBack}>
@@ -744,7 +783,7 @@ export function InspectionWorkflow({
           </button>
         </div>
       </div>
-      <section className="card mb-5 p-5">
+      <section className="card mb-5 p-5 print:hidden">
         <div className="grid grid-cols-4 gap-2 sm:gap-4">
           {steps.map((label, index) => (
             <button
@@ -782,27 +821,29 @@ export function InspectionWorkflow({
           Step {step + 1} of {steps.length}
         </p>
       </section>
-      <section className="card space-y-2 p-3 sm:p-5">
-        {sections.map((section, index) => (
+      <section className="card space-y-2 p-3 sm:p-5 print:border-0 print:p-0 print:shadow-none">
+        {sections.map((section, index) => {
+          const isExpanded = expanded === "all" || expanded === index;
+          return (
           <article
             key={section.title}
-            className="overflow-hidden rounded-lg border border-slate-200"
+            className="overflow-hidden rounded-lg border border-slate-200 print:mb-4 print:break-inside-avoid"
           >
             <button
-              className="flex w-full items-center justify-between bg-brand-navy px-4 py-3 text-left text-sm font-semibold text-white"
-              aria-expanded={expanded === index}
+              className="flex w-full items-center justify-between bg-brand-navy px-4 py-3 text-left text-sm font-semibold text-white print:bg-slate-100 print:text-ink"
+              aria-expanded={isExpanded}
               onClick={() => {
-                setExpanded(expanded === index ? -1 : index);
+                setExpanded(isExpanded ? -1 : index);
                 setStep(index);
               }}
             >
               <span>{section.title}</span>
-              <span aria-hidden="true">{expanded === index ? "⌃" : "⌄"}</span>
+              <span aria-hidden="true">{isExpanded ? "⌃" : "⌄"}</span>
             </button>
-            {expanded === index && (
-              <div className="p-4 sm:p-5">
+            {isExpanded && (
+              <div className="p-4 sm:p-5 print:p-3">
                 {section.content}
-                <div className="mt-5 flex flex-wrap justify-between gap-2 border-t border-slate-200 pt-4">
+                <div className="mt-5 flex flex-wrap justify-between gap-2 border-t border-slate-200 pt-4 print:hidden">
                   <button
                     className="btn-secondary"
                     disabled={index === 0}
@@ -846,7 +887,8 @@ export function InspectionWorkflow({
               </div>
             )}
           </article>
-        ))}
+          );
+        })}
         {error && (
           <p role="alert" className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700">
             {error}
@@ -858,6 +900,34 @@ export function InspectionWorkflow({
           </p>
         )}
       </section>
+      </div>
+      {previewImage !== null && images[previewImage] && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/90 p-4 sm:p-8"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Vehicle image ${previewImage + 1} preview`}
+          onClick={() => setPreviewImage(null)}
+        >
+          <button
+            type="button"
+            className="absolute right-4 top-4 grid h-11 w-11 place-items-center rounded-full bg-white/15 text-2xl text-white hover:bg-white/25"
+            aria-label="Close image preview"
+            onClick={() => setPreviewImage(null)}
+          >
+            ×
+          </button>
+          <img
+            src={images[previewImage]}
+            alt={`Vehicle image ${previewImage + 1} large preview`}
+            className="max-h-[88vh] max-w-[92vw] object-contain"
+            onClick={(event) => event.stopPropagation()}
+          />
+          <p className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-black/50 px-3 py-1.5 text-xs text-white">
+            Image {previewImage + 1} of {images.length}
+          </p>
+        </div>
+      )}
     </>
   );
 }
