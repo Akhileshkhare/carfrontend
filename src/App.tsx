@@ -14,6 +14,7 @@ import {
   InspectionWorkspace,
   type WorkflowSelection,
 } from "./InspectionWorkspace";
+import { QuickInspection } from "./QuickInspection";
 import {
   navigation,
   resources,
@@ -21,7 +22,12 @@ import {
   type ResourceDefinition,
 } from "./catalog";
 
-type ViewKey = "dashboard" | "approvals" | "inspection-workflow" | ResourceName;
+type ViewKey =
+  | "dashboard"
+  | "approvals"
+  | "inspection-workflow"
+  | "quick-inspection"
+  | ResourceName;
 interface RecordPage {
   data: Record<string, unknown>[];
   page: number;
@@ -43,6 +49,7 @@ const iconPaths: Record<string, string> = {
   repairs:
     "M14.7 6.3a5 5 0 0 0-6.4 6.4L3 18l3 3 5.3-5.3a5 5 0 0 0 6.4-6.4L14 12l-3-3z",
   approvals: "M9 12l2 2 4-4M4 4h16v16H4z",
+  "quick-inspection": "M5 4h14v16H5zM8 8h8M8 12h8M8 16h5",
 };
 
 function Icon({ name, size = 18 }: { name: string; size?: number }) {
@@ -388,6 +395,7 @@ function App() {
     if (user.role === "inspector")
       return (
         item.key === "dashboard" ||
+        item.key === "quick-inspection" ||
         item.key === "inspections" ||
         item.key === "quality-checks"
       );
@@ -402,6 +410,8 @@ function App() {
         ? "Status approvals"
         : view === "inspection-workflow"
           ? "Vehicle Inspection"
+          : view === "quick-inspection"
+            ? "Quick Inspection"
           : resources[view].name;
 
   return (
@@ -591,6 +601,8 @@ function App() {
             <Dashboard user={user} onNavigate={setView} />
           ) : view === "approvals" ? (
             <Approvals />
+          ) : view === "quick-inspection" ? (
+            <QuickInspection user={user} />
           ) : view === "inspections" || view === "quality-checks" ? (
             <InspectionWorkspace
               key={view}

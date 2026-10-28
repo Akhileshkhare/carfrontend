@@ -304,13 +304,14 @@ export const resources: Record<ResourceName, ResourceDefinition> = {
 };
 
 export const navigation: {
-  key: ResourceName | "dashboard" | "approvals";
+  key: ResourceName | "dashboard" | "approvals" | "quick-inspection";
   label: string;
   group: string;
 }[] = [
   { key: "dashboard", label: "Overview", group: "Workspace" },
   { key: "listings", label: "Vehicle listings", group: "Inventory" },
   { key: "quick-listings", label: "Quick listings", group: "Inventory" },
+  { key: "quick-inspection", label: "Quick Inspection", group: "Operations" },
   { key: "dealers", label: "Dealers", group: "People" },
   { key: "buyers", label: "Buyers", group: "People" },
   { key: "sellers", label: "Sellers", group: "People" },
