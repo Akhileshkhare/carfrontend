@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import type { AuthUser } from "../shared/contracts";
 import { api } from "./api";
 
@@ -74,10 +74,40 @@ function baseValue(record?: RecordData): RecordData {
     registration_no: String(record?.registration_no ?? ""),
     customer_name: String(record?.customer_name ?? ""),
     mobile: String(record?.mobile ?? ""),
-    scheduled_at: String(record?.scheduled_at ?? new Date().toISOString().slice(0, 16)),
+    scheduled_at: String(
+      record?.scheduled_at ?? new Date().toISOString().slice(0, 16),
+    ),
     ...pdi,
   };
 }
+
+const reportFields = [
+  { key: "customer_name", label: "Customer name", required: true },
+  { key: "mobile", label: "Customer contact number", required: true },
+  { key: "registration_no", label: "Registration number", required: true },
+  { key: "scheduled_at", label: "Date of inspection", type: "datetime-local" },
+  { key: "ref_id", label: "Report reference" },
+];
+
+const tabs = [
+  { id: "details", label: "Report details", shortLabel: "Details" },
+  { id: "vehicle", label: "Vehicle identity", shortLabel: "Vehicle" },
+  { id: "exterior", label: "Exterior and body", shortLabel: "Exterior" },
+  { id: "tyres", label: "Tyres and wheels", shortLabel: "Tyres" },
+  { id: "systems", label: "Interior and systems", shortLabel: "Systems" },
+  { id: "final", label: "Final assessment", shortLabel: "Final" },
+] as const;
+
+const tabSections = [
+  undefined,
+  sections[0],
+  sections[1],
+  sections[2],
+  { title: "Interior and systems", fields: [...sections[3].fields, ...sections[4].fields, ...sections[5].fields, ...sections[6].fields] },
+  sections[7],
+];
+
+type TabId = (typeof tabs)[number]["id"];
 
 function Report({ record, onClose }: { record: RecordData; onClose: () => void }) {
   const pdi = pdiValues(record.pdi_data);
@@ -96,7 +126,32 @@ function Report({ record, onClose }: { record: RecordData; onClose: () => void }
   </div>;
 }
 
-export function QuickInspection({ user }: { user: AuthUser }) {
+function ImageUpload({
+  tab,
+  images,
+  onChange,
+}: {
+  tab: TabId;
+  images: Record<string, string[]>;
+  onChange: (tab: TabId, files: FileList | null) => void;
+}) {
+  if (!["exterior", "tyres", "final"].includes(tab)) return null;
+  const labels: Record<string, string> = {
+    exterior: "Add exterior photos",
+    tyres: "Add tyre and wheel photos",
+    final: "Add supporting documents or final photos",
+  };
+  const previews = images[tab] ?? [];
+  return <div className="mt-7 rounded-xl border border-dashed border-brand/30 bg-brand-soft/40 p-4 sm:p-5">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div><p className="text-sm font-semibold text-ink">{labels[tab]}</p><p className="mt-1 text-xs text-muted">Use clear photos in good light. You can select multiple images.</p></div>
+      <label className="btn-secondary cursor-pointer text-center"><span>Choose images</span><input className="sr-only" type="file" accept="image/*" multiple onChange={(event) => onChange(tab, event.target.files)} /></label>
+    </div>
+    {!!previews.length && <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">{previews.map((src, index) => <img key={src} src={src} alt={`${labels[tab]} ${index + 1}`} className="h-28 w-full rounded-lg border border-line bg-white object-cover" />)}</div>}
+  </div>;
+}
+
+export function QuickInspection({ user: _user }: { user: AuthUser }) {
   const [records, setRecords] = useState<RecordData[]>([]);
   const [record, setRecord] = useState<RecordData | undefined>();
   const [mode, setMode] = useState<"list" | "form">("list");
@@ -105,25 +160,98 @@ export function QuickInspection({ user }: { user: AuthUser }) {
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
-  const load = () => { setBusy(true); void api.list("inspections", { page: 1, pageSize: 100, sort: "created_at", direction: "desc" }).then((result) => setRecords(result.data.filter((item) => Object.keys(pdiValues(item.pdi_data)).length))).catch((failure) => setError(failure instanceof Error ? failure.message : "Unable to load inspections.")).finally(() => setBusy(false)); };
-  useEffect(load, []);
+  const [tab, setTab] = useState<TabId>("details");
+  const [images, setImages] = useState<Record<string, string[]>>({});
+
+  const load = useCallback(() => {
+    setBusy(true);
+    void api.list("inspections", { page: 1, pageSize: 100, sort: "created_at", direction: "desc" })
+      .then((result) => setRecords(result.data.filter((item) => Object.keys(pdiValues(item.pdi_data)).length)))
+      .catch((failure) => setError(failure instanceof Error ? failure.message : "Unable to load inspections."))
+      .finally(() => setBusy(false));
+  }, []);
+  useEffect(() => { void Promise.resolve().then(load); }, [load]);
   const visible = useMemo(() => records.filter((item) => `${item.ref_id} ${item.registration_no} ${item.customer_name} ${item.mobile}`.toLowerCase().includes(query.toLowerCase())), [records, query]);
-  function start(next?: RecordData) { setRecord(next); setForm(baseValue(next)); setMode("form"); setError(""); }
+
+  function start(next?: RecordData) {
+    const nextPdi = pdiValues(next?.pdi_data);
+    setRecord(next);
+    setForm(baseValue(next));
+    setImages({
+      exterior: String(nextPdi.exterior_photo_urls ?? "").split(",").filter(Boolean),
+      tyres: String(nextPdi.tyres_photo_urls ?? "").split(",").filter(Boolean),
+      final: String(nextPdi.final_photo_urls ?? "").split(",").filter(Boolean),
+    });
+    setTab("details");
+    setMode("form");
+    setError("");
+  }
+  function setField(key: string, value: string) {
+    setForm((current) => ({ ...current, [key]: value }));
+  }
+  async function handleImages(tabId: TabId, files: FileList | null) {
+    if (!files?.length) return;
+    setError("");
+    setBusy(true);
+    try {
+      const selectedFiles = Array.from(files).slice(0, 8);
+      const result = await api.uploadImages(selectedFiles);
+      const urls = result.data.map((item) => item.url);
+      setImages((current) => ({ ...current, [tabId]: [...(current[tabId] ?? []), ...urls].slice(0, 8) }));
+      setForm((current) => ({
+        ...current,
+        [`${tabId}_photo_names`]: selectedFiles.map((file) => file.name).join(", ").slice(0, 2000),
+        [`${tabId}_photo_urls`]: [...((current[`${tabId}_photo_urls`] as string) ?? "").split(",").filter(Boolean), ...urls].slice(0, 8).join(","),
+      }));
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : "Unable to upload images.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  function validateTab(tabId: TabId) {
+    if (tabId !== "details") return true;
+    if (!form.customer_name || !form.mobile || !form.registration_no) {
+      setError("Customer name, contact number, and registration number are required.");
+      return false;
+    }
+    return true;
+  }
+  function moveTab(direction: -1 | 1) {
+    if (direction === 1 && !validateTab(tab)) return;
+    const index = tabs.findIndex((item) => item.id === tab);
+    const next = tabs[index + direction];
+    if (next) { setError(""); setTab(next.id); }
+  }
   async function save(event: FormEvent) {
-    event.preventDefault(); setError("");
+    event.preventDefault();
+    if (!validateTab("details")) return;
+    setError("");
     const pdi_data = Object.fromEntries(allFields.map((field) => [field.key, String(form[field.key] ?? "").trim()]).filter(([, value]) => value));
-    if (!form.customer_name || !form.mobile || !form.registration_no) { setError("Customer name, contact number, and registration number are required."); return; }
+    Object.entries(form).filter(([key]) => key.endsWith("_photo_names") || key.endsWith("_photo_urls")).forEach(([key, value]) => { if (value) pdi_data[key] = String(value); });
     try {
       const payload = { ref_id: String(form.ref_id), registration_no: String(form.registration_no), customer_name: String(form.customer_name), mobile: String(form.mobile), scheduled_at: String(form.scheduled_at || new Date().toISOString()), notes: String(pdi_data.engineer_comment || ""), pdi_data };
       if (record?.id) await api.update("inspections", Number(record.id), payload); else await api.create("inspections", payload);
       load(); setMode("list");
     } catch (failure) { setError(failure instanceof Error ? failure.message : "Unable to save inspection."); }
   }
-  const setField = (key: string, value: string) => setForm((current) => ({ ...current, [key]: value }));
-  if (mode === "form") return <form onSubmit={save} className="space-y-6"><div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-brand">Quick Inspection</p><h1 className="mt-1 text-2xl font-semibold text-ink">{record ? "Edit PDI report" : "New PDI report"}</h1><p className="mt-1 text-sm text-muted">Complete the checklist in sections. You can save and edit it later.</p></div><div className="flex gap-2"><button type="button" className="btn-secondary" onClick={() => setMode("list")}>Cancel</button><button className="btn-primary" disabled={busy}>Save report</button></div></div>
-    {error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error}</div>}
-    <section className="card p-5 sm:p-7"><h2 className="text-base font-semibold text-ink">Report details</h2><div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">{[{ key: "customer_name", label: "Customer name", required: true }, { key: "mobile", label: "Customer contact number", required: true }, { key: "registration_no", label: "Registration number", required: true }, { key: "scheduled_at", label: "Date of inspection", type: "datetime-local" }, { key: "ref_id", label: "Report reference" }].map((field) => <label key={field.key} className="field-label">{field.label}{field.required && <span className="text-rose-500"> *</span>}<input required={field.required} type={field.type ?? "text"} className="field-control mt-1" value={String(form[field.key] ?? "")} onChange={(event) => setField(field.key, event.target.value)} /></label>)}</div></section>
-    {sections.map((section) => <section key={section.title} className="card p-5 sm:p-7"><h2 className="text-base font-semibold text-ink">{section.title}</h2><div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{section.fields.map((field) => <label key={field.key} className="field-label">{field.label}{field.options ? <select className="field-control mt-1" value={String(form[field.key] ?? "")} onChange={(event) => setField(field.key, event.target.value)}><option value="">Select</option>{field.options.map((option) => <option key={option}>{option}</option>)}</select> : <input className="field-control mt-1" value={String(form[field.key] ?? "")} onChange={(event) => setField(field.key, event.target.value)} />}</label>)}</div>{section.title === "Diagnostics and final assessment" && <label className="field-label mt-5">Engineer's comment<textarea className="field-control mt-1 min-h-24" value={String(form.engineer_comment ?? "")} onChange={(event) => setField("engineer_comment", event.target.value)} /></label>}</section>)}
-  </form>;
-  return <div><div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-brand">Operations</p><h1 className="mt-1 text-2xl font-semibold text-ink">Quick Inspection <span className="ml-2 text-sm font-medium text-muted">{records.length}</span></h1><p className="mt-1 text-sm text-muted">Create, track, and print complete pre-delivery inspection reports.</p></div><button className="btn-primary" onClick={() => start()}>＋ New inspection</button></div><section className="card overflow-hidden"><div className="flex flex-col gap-3 border-b border-line p-4 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="font-semibold text-ink">Inspection reports</h2><p className="mt-1 text-xs text-muted">View or update the full checklist at any time.</p></div><input className="field-control max-w-sm" placeholder="Search customer, vehicle or reference…" value={query} onChange={(event) => setQuery(event.target.value)} /></div><div className="overflow-x-auto"><table className="w-full text-left"><thead className="bg-slate-50 text-xs uppercase tracking-wide text-muted"><tr><th className="px-5 py-3">Reference</th><th className="px-5 py-3">Customer</th><th className="px-5 py-3">Vehicle</th><th className="px-5 py-3">Status</th><th className="px-5 py-3 text-right">Actions</th></tr></thead><tbody className="divide-y divide-slate-100">{visible.map((item) => { const pdi = pdiValues(item.pdi_data); return <tr key={String(item.id)} className="hover:bg-slate-50"><td className="px-5 py-4 text-sm font-semibold text-brand">{String(item.ref_id)}</td><td className="px-5 py-4 text-sm text-ink"><div className="font-medium">{String(item.customer_name)}</div><div className="text-xs text-muted">{String(item.mobile)}</div></td><td className="px-5 py-4 text-sm text-slate-600">{String(item.registration_no)}<div className="text-xs text-muted">{String(pdi.inspection_type || "PDI")}</div></td><td className="px-5 py-4"><span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">{String(pdi.overall_status || "Draft")}</span></td><td className="px-5 py-4"><div className="flex justify-end gap-2"><button className="btn-secondary !px-3 !py-1.5 text-xs" onClick={() => setReport(item)}>View</button><button className="btn-secondary !px-3 !py-1.5 text-xs" onClick={() => start(item)}>Edit</button><button className="btn-primary !px-3 !py-1.5 text-xs" onClick={() => setReport(item)}>Report</button></div></td></tr>; })}</tbody></table></div>{busy && <p className="p-8 text-center text-sm text-muted">Loading inspections…</p>}{!busy && !visible.length && <p className="p-12 text-center text-sm text-muted">No PDI reports found. Create the first inspection to get started.</p>}</section>{error && <p role="alert" className="mt-4 text-sm text-rose-600">{error}</p>}{report && <Report record={report} onClose={() => setReport(undefined)} />}</div>;
+  if (mode === "form") {
+    const activeTab = tabs.findIndex((item) => item.id === tab);
+    const activeSection = tabSections[activeTab];
+    return <form onSubmit={save} className="mx-auto max-w-6xl space-y-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-brand">Quick Inspection</p><h1 className="mt-1 text-2xl font-semibold text-ink sm:text-3xl">{record ? "Edit PDI report" : "New PDI report"}</h1><p className="mt-1 text-sm text-muted">Complete each step at your own pace. Your report stays easy to use on mobile and web.</p></div><div className="flex gap-2"><button type="button" className="btn-secondary flex-1 sm:flex-none" onClick={() => setMode("list")}>Cancel</button><button className="btn-primary flex-1 sm:flex-none" disabled={busy}>Save report</button></div></div>
+      <div className="card overflow-hidden">
+        <div className="border-b border-line bg-slate-50 px-4 py-4 sm:px-6"><div className="mb-3 flex items-center justify-between text-xs font-semibold text-muted"><span>Step {activeTab + 1} of {tabs.length}</span><span>{Math.round(((activeTab + 1) / tabs.length) * 100)}% complete</span></div><div className="h-1.5 overflow-hidden rounded-full bg-slate-200"><div className="h-full rounded-full bg-brand transition-all" style={{ width: `${((activeTab + 1) / tabs.length) * 100}%` }} /></div></div>
+        <nav className="scrollbar-thin flex overflow-x-auto border-b border-line" aria-label="PDI report steps">{tabs.map((item, index) => <button key={item.id} type="button" onClick={() => { if (index <= activeTab || validateTab(tab)) { setError(""); setTab(item.id); } }} className={`min-w-[110px] flex-1 border-b-2 px-3 py-3 text-left text-xs font-semibold transition sm:min-w-0 sm:px-5 sm:text-sm ${tab === item.id ? "border-brand bg-brand-soft text-brand" : "border-transparent text-muted hover:bg-slate-50"}`}><span className="mr-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-white text-[10px] ring-1 ring-line">{index + 1}</span><span className="sm:hidden">{item.shortLabel}</span><span className="hidden sm:inline">{item.label}</span></button>)}</nav>
+        <div className="p-4 sm:p-7">
+          {error && <div role="alert" className="mb-5 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error}</div>}
+          {tab === "details" && <section><h2 className="text-base font-semibold text-ink">Report details</h2><p className="mt-1 text-sm text-muted">Start with the customer and vehicle information.</p><div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">{reportFields.map((field) => <label key={field.key} className="field-label">{field.label}{field.required && <span className="text-rose-500"> *</span>}<input required={field.required} type={field.type ?? "text"} className="field-control mt-1" value={String(form[field.key] ?? "")} onChange={(event) => setField(field.key, event.target.value)} /></label>)}</div></section>}
+          {activeSection && <section><h2 className="text-base font-semibold text-ink">{activeSection.title}</h2><p className="mt-1 text-sm text-muted">Choose the closest condition for each checkpoint.</p><div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{activeSection.fields.map((field) => <label key={field.key} className="field-label">{field.label}{field.options ? <select className="field-control mt-1" value={String(form[field.key] ?? "")} onChange={(event) => setField(field.key, event.target.value)}><option value="">Select</option>{field.options.map((option) => <option key={option}>{option}</option>)}</select> : <input className="field-control mt-1" value={String(form[field.key] ?? "")} onChange={(event) => setField(field.key, event.target.value)} />}</label>)}</div>{tab === "final" && <label className="field-label mt-6">Engineer's comment<textarea className="field-control mt-1 min-h-28" placeholder="Add observations, defects, or recommendations" value={String(form.engineer_comment ?? "")} onChange={(event) => setField("engineer_comment", event.target.value)} /></label>}</section>}
+          <ImageUpload tab={tab} images={images} onChange={handleImages} />
+        </div>
+        <div className="flex flex-col-reverse gap-3 border-t border-line bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-7"><button type="button" className="btn-secondary w-full sm:w-auto" disabled={activeTab === 0} onClick={() => moveTab(-1)}>← Previous</button>{activeTab < tabs.length - 1 ? <button type="button" className="btn-primary w-full sm:w-auto" onClick={() => moveTab(1)}>Save and continue →</button> : <button type="submit" className="btn-primary w-full sm:w-auto" disabled={busy}>Save PDI report</button>}</div>
+      </div>
+    </form>;
+  }
+  return <div><div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-brand">Quick Inspection</p><h1 className="mt-1 text-2xl font-semibold text-ink">Quick Inspection <span className="ml-2 text-sm font-medium text-muted">{records.length}</span></h1><p className="mt-1 text-sm text-muted">Create, track, and print complete pre-delivery inspection reports.</p></div><button className="btn-primary w-full sm:w-auto" onClick={() => start()}>＋ New PDI report</button></div><section className="card overflow-hidden"><div className="flex flex-col gap-3 border-b border-line p-4 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="font-semibold text-ink">Inspection reports</h2><p className="mt-1 text-xs text-muted">View or update the full checklist at any time.</p></div><input className="field-control max-w-sm" placeholder="Search customer, vehicle or reference…" value={query} onChange={(event) => setQuery(event.target.value)} /></div><div className="overflow-x-auto"><table className="w-full text-left"><thead className="bg-slate-50 text-xs uppercase tracking-wide text-muted"><tr><th className="px-5 py-3">Reference</th><th className="px-5 py-3">Customer</th><th className="px-5 py-3">Vehicle</th><th className="px-5 py-3">Status</th><th className="px-5 py-3 text-right">Actions</th></tr></thead><tbody className="divide-y divide-slate-100">{visible.map((item) => { const pdi = pdiValues(item.pdi_data); return <tr key={String(item.id)} className="hover:bg-slate-50"><td className="px-5 py-4 text-sm font-semibold text-brand">{String(item.ref_id)}</td><td className="px-5 py-4 text-sm text-ink"><div className="font-medium">{String(item.customer_name)}</div><div className="text-xs text-muted">{String(item.mobile)}</div></td><td className="px-5 py-4 text-sm text-slate-600">{String(item.registration_no)}<div className="text-xs text-muted">{String(pdi.inspection_type || "PDI")}</div></td><td className="px-5 py-4"><span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">{String(pdi.overall_status || "Draft")}</span></td><td className="px-5 py-4"><div className="flex justify-end gap-2"><button className="btn-secondary !px-3 !py-1.5 text-xs" onClick={() => setReport(item)}>View</button><button className="btn-secondary !px-3 !py-1.5 text-xs" onClick={() => start(item)}>Edit</button><button className="btn-primary !px-3 !py-1.5 text-xs" onClick={() => setReport(item)}>Report</button></div></td></tr>; })}</tbody></table></div>{busy && <p className="p-8 text-center text-sm text-muted">Loading inspections…</p>}{!busy && !visible.length && <p className="p-12 text-center text-sm text-muted">No PDI reports found. Create the first inspection to get started.</p>}</section>{error && <p role="alert" className="mt-4 text-sm text-rose-600">{error}</p>}{report && <Report record={report} onClose={() => setReport(undefined)} />}</div>;
 }

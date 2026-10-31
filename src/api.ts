@@ -46,7 +46,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = storedSessionToken();
   if (token && !headers.has("Authorization"))
     headers.set("Authorization", `Bearer ${token}`);
-  if (init.body && !headers.has("Content-Type"))
+  if (init.body && !headers.has("Content-Type") && !(init.body instanceof FormData))
     headers.set("Content-Type", "application/json");
   if (["POST", "PUT", "PATCH", "DELETE"].includes(method))
     headers.set("X-CSRF-Token", csrfToken());
@@ -161,6 +161,19 @@ export const api = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+  uploadImages: async (files: File[]) => {
+    const formData = new FormData();
+    files.forEach((file) => formData.append("images", file));
+    const result = await request<{
+      data: { id: number; originalName: string; mimeType: string; size: number; url: string }[];
+    }>("/uploads/images", { method: "POST", body: formData });
+    return {
+      data: result.data.map((item) => ({
+        ...item,
+        url: `${apiUrl}${item.url}`,
+      })),
+    };
+  },
   update: (resource: ResourceName, id: number, data: Record<string, unknown>) =>
     request<void>(`/${resource}/${id}`, {
       method: "PUT",

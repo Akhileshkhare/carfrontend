@@ -391,15 +391,11 @@ function App() {
   if (!user) return <Login onLogin={setUser} />;
 
   const visibleNavigation = navigation.filter((item) => {
+    if (item.group === "People" || item.group === "Operations") return false;
     if (item.key === "approvals") return user.role === "admin";
-    if (user.role === "inspector")
-      return (
-        item.key === "dashboard" ||
-        item.key === "quick-inspection" ||
-        item.key === "inspections" ||
-        item.key === "quality-checks"
-      );
-    return true;
+    return user.role === "inspector"
+      ? item.key === "dashboard" || item.key === "quick-inspection"
+      : true;
   });
   const activeNavigation =
     view === "inspection-workflow" ? workflowSelection?.resource : view;
@@ -433,7 +429,7 @@ function App() {
           className="scrollbar-thin flex-1 overflow-y-auto px-3 py-5"
           aria-label="Main navigation"
         >
-          {["Workspace", "Inventory", "People", "Operations"].map((group) => {
+          {["Workspace", "Inventory"].map((group) => {
             const items = visibleNavigation.filter(
               (item) => item.group === group,
             );
